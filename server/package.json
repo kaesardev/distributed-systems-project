@@ -8,12 +8,14 @@
     "dev": "ts-node-dev index.ts"
   },
   "dependencies": {
+    "amqplib": "^0.10.3",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^4.8.4",
     "ws": "^8.9.0"
   },
   "devDependencies": {
+    "@types/amqplib": "^0.8.2",
     "@types/ws": "^8.5.3"
   }
 }

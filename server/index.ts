@@ -4,6 +4,9 @@ import {
   WebSocket as Client,
 } from "ws";
 
+import * as amqp from "amqplib/callback_api";
+
+/*
 const wss = new WebSocketServer({ port: 8080, path: "/finance" });
 
 wss.on("listening", () => {
@@ -30,3 +33,26 @@ wss.on("connection", (wsc) => {
 });
 
 wss.on("close", () => console.log("Websocket closed!"));
+*/
+
+amqp.connect('amqp://localhost', function(error0, connection) {
+  if (error0) {
+    throw error0;
+  }
+  connection.createChannel(function(error1, channel) {
+    if (error1) {
+      throw error1;
+    }
+    var queue = 'hello';
+
+    channel.assertQueue(queue, {
+      durable: false
+    });
+    console.log(" [*] Waiting for messages in %s. To exit press CTRL+C", queue);
+    channel.consume(queue, function(msg: any) {
+    console.log(" [x] Received %s", msg.content.toString());
+    }, {
+      noAck: true
+    });
+  });
+});
