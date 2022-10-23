@@ -1,48 +1,35 @@
 import amqp from "amqplib/callback_api";
 
+const URL = "amqp://localhost";
+const EXCHANGE = "logs";
+const QUEUE = "";
+
 export const CreateRabbitMQSubscriber = () => {
-  amqp.connect("amqp://localhost", (connectError, connection) => {
-    if (connectError) {
-      throw connectError;
-    }
+  amqp.connect(URL, (connectError, connection) => {
+    if (connectError) throw connectError;
 
     connection.createChannel((channelError, channel) => {
-      if (channelError) {
-        throw channelError;
-      }
+      if (channelError) throw channelError;
 
-      const exchange_name = "logs";
-      const queue_name = "";
+      channel.assertExchange(EXCHANGE, "fanout", { durable: false });
 
-      channel.assertExchange(exchange_name, "fanout", { durable: false });
+      channel.assertQueue(QUEUE, { exclusive: true }, function (queueError, q) {
+        if (queueError) throw queueError;
 
-      channel.assertQueue(
-        queue_name,
-        { exclusive: true },
-        function (error2, q) {
-          if (error2) {
-            throw error2;
-          }
+        channel.bindQueue(q.queue, EXCHANGE, "");
 
-          channel.bindQueue(q.queue, exchange_name, "");
+        console.log(`[RabbitMQ] listenning at ${EXCHANGE}:${QUEUE}:${q.queue}`);
 
-          console.log(
-            `[RabbitMQ] listenning at ${exchange_name}:${queue_name}:${q.queue}`
-          );
-
-          channel.consume(
-            q.queue,
-            (msg) => {
-              if (msg!.content) {
-                console.log("[RabbitMQ]: %s", msg!.content.toString());
-              }
-            },
-            {
-              noAck: true,
+        channel.consume(
+          q.queue,
+          (msg) => {
+            if (msg!.content) {
+              console.log("[RabbitMQ]: %s", msg!.content.toString());
             }
-          );
-        }
-      );
+          },
+          { noAck: true }
+        );
+      });
     });
   });
 

@@ -1,8 +1,17 @@
-import {
-  Server as WebSocketServer,
-  AddressInfo,
-  WebSocket as Client,
-} from "ws";
+import { Server as WebSocketServer, AddressInfo, WebSocket } from "ws";
+import { v4 as uuidv4 } from "uuid";
+
+interface Bet {
+  isWin: boolean;
+  value: number;
+  timestamp: number;
+}
+
+interface Client extends WebSocket {
+  uuid: string;
+  wallet: number;
+  historic: Bet[];
+}
 
 export const CreateWebSocketServer = () => {
   const wss = new WebSocketServer({ port: 8080, path: "/finance" });
@@ -14,7 +23,11 @@ export const CreateWebSocketServer = () => {
   });
 
   var connections = new Set<Client>();
-  wss.on("connection", (wsc) => {
+  wss.on("connection", (wsc: Client) => {
+    wsc.uuid = uuidv4();
+    wsc.wallet = 100.0;
+    wsc.historic = [];
+
     if (!connections.has(wsc)) {
       connections.add(wsc);
     }
@@ -27,7 +40,12 @@ export const CreateWebSocketServer = () => {
       });
     });
 
-    wsc.send("Hi!");
+    wsc.send(
+      JSON.stringify({
+        wallet: wsc.wallet,
+        history: wsc.historic,
+      })
+    );
   });
 
   wss.on("close", () => console.log("[Websocket] closed!"));
