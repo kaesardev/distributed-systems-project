@@ -5,6 +5,7 @@ import React, {
   FormEventHandler,
 } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket";
+import { ChartComponent } from "./Chart";
 
 function App() {
   const socketUrl = "ws://localhost:8080/finance";
@@ -52,6 +53,7 @@ function App() {
           <span key={idx}>{message ? message.data : null}</span>
         ))}
       </ul>
+      <ChartComponent></ChartComponent>
     </div>
   );
 }
