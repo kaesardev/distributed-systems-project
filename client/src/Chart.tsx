@@ -33,9 +33,12 @@ export const ChartComponent = () => {
               delay: 2000,
               onRefresh: chart => {
                 chart.data.datasets.forEach(dataset => {
-                  dataset.data.push({
+                  dataset.label === 'Dataset 1' ? dataset.data.push({
                     x: Date.now(),
                     y: Math.random()
+                  }) : dataset.data.push({
+                    x: Date.now(),
+                    y: 0.40
                   });
                 });
               }
