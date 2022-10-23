@@ -30,7 +30,9 @@ export const ChartComponent = () => {
           x: {
             type: 'realtime',
             realtime: {
-              delay: 2000,
+              delay: 5000,
+              refresh: 1000,
+              duration: 60000,
               onRefresh: chart => {
                 chart.data.datasets.forEach(dataset => {
                   dataset.label === 'Dataset 1' ? dataset.data.push({

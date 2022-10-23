@@ -1,15 +1,18 @@
-import { Button, Grid, List, ListItemText, TextField, Typography } from "@mui/material";
+import { Button, FormControl, Grid, InputLabel, List, ListItemText, MenuItem, Select, Typography } from "@mui/material";
+import { Box } from "@mui/system";
 import {
-  FormEventHandler, useCallback, useEffect,
+  useCallback, useEffect,
   useState
 } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { ChartComponent } from "./Chart";
+import { STOCKS } from "./enums/Stocks";
 
 function App() {
   const socketUrl = "ws://localhost:8080/finance";
   const [messageHistory, setMessageHistory] = useState<MessageEvent[]>([]);
   const [currentMessage, setCurrentMessage] = useState("");
+  const [stock, setStock] = useState(null)
 
   const { sendMessage, lastMessage, readyState } = useWebSocket(socketUrl);
 
@@ -19,14 +22,18 @@ function App() {
     }
   }, [lastMessage, setMessageHistory]);
 
-  const handleClickSendMessage = useCallback<FormEventHandler<HTMLFormElement>>(
-    (e) => {
+  const handleClickSendMessage = useCallback<any>(
+    (e: any) => {
       e.preventDefault();
       sendMessage(currentMessage);
       setCurrentMessage("");
     },
     [currentMessage, sendMessage, setCurrentMessage]
   );
+
+  const handleStockChange = (event: any) => {
+    setStock(event.target.value);
+  }
 
   const connectionStatus = {
     [ReadyState.CONNECTING]: "Connecting",
@@ -44,19 +51,33 @@ function App() {
         </Typography>
       </Grid>
       <Grid item xs={6}>
-        <form style={{
-          display: 'flex',
-          flexDirection: 'column'
-        }} onSubmit={handleClickSendMessage}>
-          <TextField
+        <FormControl onSubmit={handleClickSendMessage}>
+          {/* <TextField
             value={currentMessage}
             margin="normal"
             id="standard-basic"
             label="Stock"
             variant="standard"
-            onChange={(e) => setCurrentMessage(e.target.value)} />
+            onChange={(e) => setCurrentMessage(e.target.value)} /> */}
+          <Box sx={{ minWidth: 200 }}>
+            <InputLabel id="demo-simple-select-label">Stock</InputLabel>
+            <Select size="small"
+              margin="dense"
+              labelId="demo-simple-select-label"
+              id="demo-simple-select"
+              value={stock}
+              label="Stock"
+              onChange={handleStockChange}
+            >
+              {STOCKS.map(stock => {
+                return (
+                  <MenuItem value={stock}>{stock}</MenuItem>
+                )
+              })}
+            </Select>
+          </Box>
           <Button sx={{ width: '100px', alignSelf: 'end' }} size="large" variant="contained" type="submit">Send</Button>
-        </form>
+        </FormControl>
       </Grid>
       {/* <ul>
         {messageHistory.map((message, idx) => (
@@ -75,20 +96,12 @@ function App() {
       <Grid item xs={12}>
         <Typography variant="h5" component="h2">Carteira: R$100,00</Typography>
       </Grid>
-      <Grid item xs={6}>
-        <Typography variant="h6" component="h6">Vencedores</Typography>
+      <Grid item xs={12}>
+        <Typography variant="h6" component="h6">Histórico</Typography>
         <List>
-          <ListItemText primary="Fulano" />
-          <ListItemText primary="Ciclano" />
-          <ListItemText primary="Corno" />
-        </List>
-      </Grid>
-      <Grid item xs={6}>
-        <Typography variant="h6" component="h6">Perdedores</Typography>
-        <List>
-          <ListItemText primary="Fulano" />
-          <ListItemText primary="Ciclano" />
-          <ListItemText primary="Corno" />
+          <ListItemText primary="Vitória" />
+          <ListItemText primary="Derrota" />
+          <ListItemText primary="Derrota" />
         </List>
       </Grid>
     </Grid>
