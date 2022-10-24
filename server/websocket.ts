@@ -2,6 +2,7 @@ import { Server as WebSocketServer, AddressInfo, WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
 
 interface Bet {
+  stock: string;
   isWin: boolean;
   value: number;
   timestamp: number;
@@ -9,8 +10,9 @@ interface Bet {
 
 interface Client extends WebSocket {
   uuid: string;
+  stock: string;
   wallet: number;
-  historic: Bet[];
+  history: Bet[];
 }
 
 export const CreateWebSocketServer = () => {
@@ -26,7 +28,7 @@ export const CreateWebSocketServer = () => {
   wss.on("connection", (wsc: Client) => {
     wsc.uuid = uuidv4();
     wsc.wallet = 100.0;
-    wsc.historic = [];
+    wsc.history = [];
 
     if (!connections.has(wsc)) {
       connections.add(wsc);
@@ -34,6 +36,11 @@ export const CreateWebSocketServer = () => {
 
     wsc.on("message", function (message) {
       console.log("[Websocket]: %s", message);
+      const { type, payload } = JSON.parse(message.toString());
+      if (type === "SET_STOCK") {
+        wsc.stock = payload as string;
+      } else if (type === "SET_BET") {
+      }
 
       connections.forEach((c) => {
         c.send(`${message}`);
@@ -42,8 +49,11 @@ export const CreateWebSocketServer = () => {
 
     wsc.send(
       JSON.stringify({
-        wallet: wsc.wallet,
-        history: wsc.historic,
+        type: "GET_PROFILE",
+        payload: {
+          wallet: wsc.wallet,
+          history: wsc.history,
+        },
       })
     );
   });

@@ -1,26 +1,37 @@
-import { Button, FormControl, Grid, InputLabel, List, ListItemText, MenuItem, Select, Typography } from "@mui/material";
-import { Box } from "@mui/system";
 import {
-  useCallback, useEffect,
-  useState
-} from "react";
+  Button,
+  FormControl,
+  Grid,
+  InputLabel,
+  List,
+  ListItemText,
+  MenuItem,
+  Select,
+  SelectChangeEvent,
+  Typography,
+} from "@mui/material";
+import { useCallback, useEffect, useState } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { ChartComponent } from "./Chart";
 import { STOCKS } from "./enums/Stocks";
 
 function App() {
   const socketUrl = "ws://localhost:8080/finance";
-  const [messageHistory, setMessageHistory] = useState<MessageEvent[]>([]);
+  const [history, setHistory] = useState<string[]>([]);
+  const [wallet, setWallet] = useState<number>(0);
   const [currentMessage, setCurrentMessage] = useState("");
-  const [stock, setStock] = useState(null)
 
   const { sendMessage, lastMessage, readyState } = useWebSocket(socketUrl);
 
   useEffect(() => {
     if (lastMessage !== null) {
-      setMessageHistory((prev) => prev.concat(lastMessage));
+      const { type, payload } = JSON.parse(lastMessage.data);
+      if (type === "GET_PROFILE") {
+        setWallet(payload.wallet);
+        setHistory(payload.history);
+      }
     }
-  }, [lastMessage, setMessageHistory]);
+  }, [lastMessage, setHistory, setWallet]);
 
   const handleClickSendMessage = useCallback<any>(
     (e: any) => {
@@ -31,9 +42,32 @@ function App() {
     [currentMessage, sendMessage, setCurrentMessage]
   );
 
-  const handleStockChange = (event: any) => {
-    setStock(event.target.value);
-  }
+  const handleStockChange = (event: SelectChangeEvent<string>) => {
+    const payload = event.target.value;
+    sendMessage(JSON.stringify({ type: "SET_STOCK", payload }));
+  };
+
+  const handleButtonDown = useCallback<
+    React.MouseEventHandler<HTMLButtonElement>
+  >(
+    (e) => {
+      e.preventDefault();
+      const payload = "DOWN";
+      sendMessage(JSON.stringify({ type: "SET_BET", payload }));
+    },
+    [sendMessage]
+  );
+
+  const handleButtonUp = useCallback<
+    React.MouseEventHandler<HTMLButtonElement>
+  >(
+    (e) => {
+      e.preventDefault();
+      const payload = "UP";
+      sendMessage(JSON.stringify({ type: "SET_BET", payload }));
+    },
+    [sendMessage]
+  );
 
   const connectionStatus = {
     [ReadyState.CONNECTING]: "Connecting",
@@ -44,64 +78,69 @@ function App() {
   }[readyState];
 
   return (
-    <Grid container spacing={2} className="App">
+    <Grid container spacing={2} className="App" padding={10}>
       <Grid item xs={12}>
         <Typography variant="h4" component="h2">
-          Yet Another Gambling App
+          Yet Another Gambling App ({connectionStatus})
         </Typography>
       </Grid>
       <Grid item xs={6}>
-        <FormControl onSubmit={handleClickSendMessage}>
-          {/* <TextField
-            value={currentMessage}
-            margin="normal"
-            id="standard-basic"
+        <FormControl onSubmit={handleClickSendMessage} fullWidth>
+          <InputLabel id="stock-label">Stock</InputLabel>
+          <Select
+            id="stock"
             label="Stock"
-            variant="standard"
-            onChange={(e) => setCurrentMessage(e.target.value)} /> */}
-          <Box sx={{ minWidth: 200 }}>
-            <InputLabel id="demo-simple-select-label">Stock</InputLabel>
-            <Select size="small"
-              margin="dense"
-              labelId="demo-simple-select-label"
-              id="demo-simple-select"
-              value={stock}
-              label="Stock"
-              onChange={handleStockChange}
-            >
-              {STOCKS.map(stock => {
-                return (
-                  <MenuItem value={stock}>{stock}</MenuItem>
-                )
-              })}
-            </Select>
-          </Box>
-          <Button sx={{ width: '100px', alignSelf: 'end' }} size="large" variant="contained" type="submit">Send</Button>
+            labelId="stock-label"
+            onChange={handleStockChange}
+            autoWidth={false}
+            fullWidth
+          >
+            {STOCKS.map((stock) => {
+              return (
+                <MenuItem key={stock} value={stock}>
+                  {stock}
+                </MenuItem>
+              );
+            })}
+          </Select>
         </FormControl>
       </Grid>
-      {/* <ul>
-        {messageHistory.map((message, idx) => (
-          <span key={idx}>{message ? message.data : null}</span>
-        ))}
-      </ul> */}
-      <Grid item xs={12} lg={8}>
-        <ChartComponent></ChartComponent>
+      <Grid item xs={6}>
+        <Typography variant="h5" component="h2" textAlign="right">
+          Wallet: {wallet}
+        </Typography>
+      </Grid>
+      <Grid item xs={12} style={{ height: 300 }}>
+        <ChartComponent />
       </Grid>
       <Grid item xs={6}>
-        <Button variant="outlined">Down</Button>
+        <Button
+          color="warning"
+          variant="contained"
+          onClick={handleButtonDown}
+          fullWidth
+        >
+          Down
+        </Button>
       </Grid>
       <Grid item xs={6}>
-        <Button variant="outlined">Up</Button>
+        <Button
+          color="success"
+          variant="contained"
+          onClick={handleButtonUp}
+          fullWidth
+        >
+          Up
+        </Button>
       </Grid>
       <Grid item xs={12}>
-        <Typography variant="h5" component="h2">Carteira: R$100,00</Typography>
-      </Grid>
-      <Grid item xs={12}>
-        <Typography variant="h6" component="h6">Histórico</Typography>
+        <Typography variant="h6" component="h6">
+          Histórico
+        </Typography>
         <List>
-          <ListItemText primary="Vitória" />
-          <ListItemText primary="Derrota" />
-          <ListItemText primary="Derrota" />
+          {history.map((h, id) => {
+            return <ListItemText key={id} primary={h} />;
+          })}
         </List>
       </Grid>
     </Grid>
