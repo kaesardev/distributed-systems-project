@@ -7,6 +7,6 @@ export interface Client extends WebSocket {
   stock: string;
   wallet: number;
   history: Bet[];
-  bet: Bet;
+  bet: Bet | null;
   subscription: Subscription;
 }

@@ -41,13 +41,72 @@ export const CreateWebSocketServer = () => {
         }
         wsc.subscription = stocks[stock].subscribe((payload) => {
           wsc.send(JSON.stringify({ type: "GET_STOCK", payload }));
+
+          if (wsc.bet) {
+            if (
+              wsc.bet.open === 0 &&
+              wsc.bet.openTimestamp <= new Date(payload.date)
+            ) {
+              wsc.bet.open = payload.close;
+              wsc.send(JSON.stringify({ type: "OPEN_BET", payload }));
+            }
+
+            if (
+              wsc.bet.close === 0 &&
+              wsc.bet.closeTimestamp <= new Date(payload.date)
+            ) {
+              wsc.bet.close = payload.close;
+              if (
+                (wsc.bet.direction === "UP" && wsc.bet.open < payload.close) ||
+                (wsc.bet.direction === "DOWN" && wsc.bet.open > payload.close)
+              ) {
+                wsc.bet.isWin = true;
+                wsc.bet.value *= 2;
+              }
+
+              if (wsc.bet.isWin) {
+                wsc.wallet += wsc.bet.value;
+              } else {
+                wsc.wallet -= wsc.bet.value;
+              }
+
+              wsc.history.push(wsc.bet);
+              wsc.bet = null;
+
+              wsc.send(JSON.stringify({ type: "CLOSE_BET", payload }));
+              wsc.send(
+                JSON.stringify({
+                  type: "GET_PROFILE",
+                  payload: {
+                    wallet: wsc.wallet,
+                    history: wsc.history,
+                  },
+                })
+              );
+            }
+          }
         });
       } else if (type === "SET_BET") {
+        var now = new Date(Date.now());
+
+        var openTimestamp = new Date(now);
+        openTimestamp.setSeconds(
+          openTimestamp.getSeconds() + (10 - (openTimestamp.getSeconds() % 10))
+        );
+
+        var closeTimestamp = new Date(openTimestamp);
+        closeTimestamp.setSeconds(closeTimestamp.getSeconds() + 10);
+
         wsc.bet = {
           isWin: false,
           stock: wsc.stock,
           timestamp: new Date(Date.now()).toISOString(),
           value: 10.0,
+          openTimestamp,
+          open: 0,
+          closeTimestamp,
+          close: 0,
+          direction: payload,
         };
       }
     });

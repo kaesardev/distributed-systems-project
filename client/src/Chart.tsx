@@ -1,9 +1,4 @@
-import React, {
-  useRef,
-  useEffect,
-  forwardRef,
-  useImperativeHandle,
-} from "react";
+import React, { useRef, forwardRef, useImperativeHandle } from "react";
 import {
   Chart as ChartJS,
   LinearScale,
@@ -68,7 +63,7 @@ const Chart = forwardRef((props: CharProps, ref) => {
           x: {
             type: "realtime",
             realtime: {
-              delay: 1000,
+              delay: 0,
               refresh: 1000,
               duration: 60 * 1000,
               // onRefresh: (chart) => {

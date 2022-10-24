@@ -18,9 +18,11 @@ import { STOCKS } from "./enums/Stocks";
 function App() {
   const chartRef = useRef<any>();
   const socketUrl = "ws://localhost:8080/finance";
-  const [history, setHistory] = useState<string[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [wallet, setWallet] = useState<number>(0);
   const [stock, setStock] = useState<string>("");
+  const [bet, setBet] = useState<boolean>(false);
+  const [initBet, setInitBet] = useState<boolean>(false);
   const [currentMessage, setCurrentMessage] = useState("");
 
   const { sendMessage, lastMessage, readyState } = useWebSocket(socketUrl);
@@ -28,6 +30,7 @@ function App() {
   useEffect(() => {
     if (lastMessage !== null) {
       const { type, payload } = JSON.parse(lastMessage.data);
+
       if (type === "GET_PROFILE") {
         setWallet(payload.wallet);
         setHistory(payload.history);
@@ -35,13 +38,39 @@ function App() {
         let chart = chartRef!.current!.getChart();
 
         chart.data.datasets.forEach((dataset: any) => {
-          if (dataset.label === "Dataset 1") {
+          if (dataset.label === "Dataset 1" || !initBet) {
             dataset.data.push({
               x: new Date(payload.date).getTime(),
               y: payload.close,
             });
           }
         });
+      } else if (type === "OPEN_BET") {
+        let chart = chartRef!.current!.getChart();
+
+        chart.data.datasets.forEach((dataset: any) => {
+          if (dataset.label === "Dataset 2") {
+            dataset.data.push({
+              x: new Date(payload.date).getTime(),
+              y: payload.close,
+            });
+          }
+        });
+        setInitBet(true);
+      } else if (type === "CLOSE_BET") {
+        let chart = chartRef!.current!.getChart();
+
+        chart.data.datasets.forEach((dataset: any) => {
+          if (dataset.label === "Dataset 2") {
+            dataset.data.push({
+              x: new Date(payload.date).getTime(),
+              y: payload.close,
+            });
+          }
+        });
+
+        setInitBet(false);
+        setBet(false);
       }
     }
   }, [lastMessage, setHistory, setWallet]);
@@ -66,10 +95,13 @@ function App() {
   >(
     (e) => {
       e.preventDefault();
-      const payload = "DOWN";
-      sendMessage(JSON.stringify({ type: "SET_BET", payload }));
+      if (!bet) {
+        setBet(true);
+        const payload = "DOWN";
+        sendMessage(JSON.stringify({ type: "SET_BET", payload }));
+      }
     },
-    [sendMessage]
+    [sendMessage, bet]
   );
 
   const handleButtonUp = useCallback<
@@ -77,11 +109,19 @@ function App() {
   >(
     (e) => {
       e.preventDefault();
-      const payload = "UP";
-      sendMessage(JSON.stringify({ type: "SET_BET", payload }));
+      if (!bet) {
+        setBet(true);
+        const payload = "UP";
+        sendMessage(JSON.stringify({ type: "SET_BET", payload }));
+      }
     },
-    [sendMessage]
+    [sendMessage, bet]
   );
+
+  const getNextSession = () => {
+    var now = new Date(Date.now());
+    return 10 - (now.getSeconds() % 10);
+  };
 
   const connectionStatus = {
     [ReadyState.CONNECTING]: "Connecting",
@@ -128,11 +168,17 @@ function App() {
       <Grid item xs={12} style={{ height: 300 }}>
         <ChartComponent ref={chartRef} stock={stock} />
       </Grid>
+      <Grid item xs={12}>
+        <Typography variant="h5" component="h2" textAlign="center">
+          Next session starting in {getNextSession()} sec
+        </Typography>
+      </Grid>
       <Grid item xs={6}>
         <Button
           color="warning"
           variant="contained"
           onClick={handleButtonDown}
+          disabled={bet}
           fullWidth
         >
           Down
@@ -143,6 +189,7 @@ function App() {
           color="success"
           variant="contained"
           onClick={handleButtonUp}
+          disabled={bet}
           fullWidth
         >
           Up
@@ -150,11 +197,22 @@ function App() {
       </Grid>
       <Grid item xs={12}>
         <Typography variant="h6" component="h6">
-          Histórico
+          History
         </Typography>
         <List>
-          {history.map((h, id) => {
-            return <ListItemText key={id} primary={h} />;
+          {history.map((h) => {
+            return (
+              <ListItemText
+                key={h.closeTimestamp}
+                primary={`You ${h.isWin ? "won" : "loss"} ${
+                  h.value
+                } by betting ${h.direction} between ${new Date(
+                  h.openTimestamp
+                ).toLocaleTimeString("pt-BR")} and ${new Date(
+                  h.closeTimestamp
+                ).toLocaleTimeString("pt-BR")}!`}
+              />
+            );
           })}
         </List>
       </Grid>
