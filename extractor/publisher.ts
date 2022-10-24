@@ -1,32 +1,26 @@
 import amqp from "amqplib/callback_api";
+import { GetHistoricalData } from "./pooler";
 
-export const CreateRabbitMQPublisher = () => {
+export const CreateRabbitMQPublisher = (symbol: string) => {
   amqp.connect("amqp://localhost", (connectError, connection) => {
     if (connectError) {
       throw connectError;
     }
 
-    connection.createChannel(function (channelError, channel) {
+    connection.createChannel(async (channelError, channel) => {
       if (channelError) {
         throw channelError;
       }
 
-      var msg = process.argv.slice(2).join(" ") || "Hello World!";
+      channel.assertExchange(symbol, "fanout", { durable: false });
 
-      const exchange = "logs";
-      const queue = "";
-
-      channel.assertExchange(exchange, "fanout", { durable: false });
-
-      channel.publish(exchange, queue, Buffer.from(msg));
-
-      console.log(" [x] Sent %s", msg);
+      var stream = await GetHistoricalData("AAPL");
+      stream.subscribe((data) => {
+        var msg = JSON.stringify(data);
+        channel.publish(symbol, "", Buffer.from(msg));
+        console.log("[RabbitMQ]: %s", msg);
+      });
     });
-
-    setTimeout(function () {
-      connection.close();
-      process.exit(0);
-    }, 500);
   });
 
   return amqp;

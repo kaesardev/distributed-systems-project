@@ -1,24 +1,45 @@
-import { from, defer } from 'rxjs';
+import { map, Observable } from "rxjs";
 import yahooFinance from "yahoo-finance2";
+import {
+  HistoricalResult,
+  HistoricalRow,
+} from "yahoo-finance2/dist/esm/src/modules/historical";
 
-async function createFinanceQuery (stockName: string) {
-  const results = await yahooFinance.quote(stockName);
-  return results;
+export const GetQuoteData = async (stockName: string) => {
+  const quote = await yahooFinance.quote(stockName);
+  return quote;
 };
 
-// Transforma a requisição a API em um Observable
-// TODO: Deixar as requisições acontecerem uma após a outra automaticamente
-export const CreateFinanceStream = (stockName: string) => {
-  const query$ = defer(async () => createFinanceQuery(stockName))
-  query$.subscribe(console.log)
-}
-
-// Feito para testar a ideia de ter uma base de dados histórica
-// Guarda apenas dados diários, poderia ser útil para termos 365 previsões no estoque anyway
 export const GetHistoricalData = async (stockName: string) => {
+  const quote = await GetQuoteData(stockName);
+  const firstDate = new Date(quote.firstTradeDateMilliseconds!);
+
   const queryOptions = {
-    period1: new Date('2022-10-21T08:00:00.000Z')
+    period1: firstDate,
   };
-  const results = await yahooFinance.historical(stockName, queryOptions)
-  console.log(results)
-}
+  const historic = await yahooFinance.historical(stockName, queryOptions);
+  return CreateObservableYoYo(historic);
+};
+
+export const CreateObservableYoYo = (historic: HistoricalResult) =>
+  new Observable<HistoricalRow>((s) => {
+    let i = 0;
+    let asc = true;
+
+    setInterval(() => {
+      if (i === 0) {
+        asc = true;
+      } else if (i === historic.length - 1) {
+        asc = false;
+      }
+
+      let nextValue = historic[i];
+      s.next(nextValue);
+
+      if (asc) {
+        i++;
+      } else {
+        i--;
+      }
+    }, 1000);
+  }).pipe(map((d) => ({ ...d, date: new Date().toISOString() })));
