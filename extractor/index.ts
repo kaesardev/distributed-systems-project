@@ -1,5 +1,6 @@
 import { CreateRabbitMQPublisher } from "./publisher";
-import { CreateFinanceStream } from "./pooler";
+import { CreateFinanceStream, GetHistoricalData } from "./pooler";
 
-CreateFinanceStream();
+CreateFinanceStream("AAPL");
+GetHistoricalData('AAPL')
 CreateRabbitMQPublisher();
