@@ -1,37 +1,38 @@
 import amqp from "amqplib/callback_api";
+import { Observable } from "rxjs";
 
-const URL = "amqp://localhost";
-const EXCHANGE = "logs";
-const QUEUE = "";
+export const GetStockStream = (stockName: string) => {
+  let observable = new Observable<any>((s) => {
+    amqp.connect("amqp://localhost", (connectError, connection) => {
+      if (connectError) throw connectError;
 
-export const CreateRabbitMQSubscriber = () => {
-  amqp.connect(URL, (connectError, connection) => {
-    if (connectError) throw connectError;
+      connection.createChannel((channelError, channel) => {
+        if (channelError) throw channelError;
 
-    connection.createChannel((channelError, channel) => {
-      if (channelError) throw channelError;
+        channel.assertExchange(stockName, "fanout", { durable: false });
 
-      channel.assertExchange(EXCHANGE, "fanout", { durable: false });
+        channel.assertQueue("", { exclusive: true }, function (queueError, q) {
+          if (queueError) throw queueError;
 
-      channel.assertQueue(QUEUE, { exclusive: true }, function (queueError, q) {
-        if (queueError) throw queueError;
+          channel.bindQueue(q.queue, stockName, "");
 
-        channel.bindQueue(q.queue, EXCHANGE, "");
+          console.log(`[${stockName}] listenning at ${stockName}:${q.queue}`);
 
-        console.log(`[RabbitMQ] listenning at ${EXCHANGE}:${QUEUE}:${q.queue}`);
-
-        channel.consume(
-          q.queue,
-          (msg) => {
-            if (msg!.content) {
-              console.log("[RabbitMQ]: %s", msg!.content.toString());
-            }
-          },
-          { noAck: true }
-        );
+          channel.consume(
+            q.queue,
+            (data) => {
+              if (data!.content) {
+                var message = JSON.parse(data!.content.toString());
+                // console.log(`[${stockName}]: %s`, message);
+                s.next(message);
+              }
+            },
+            { noAck: true }
+          );
+        });
       });
     });
   });
 
-  return amqp;
+  return observable;
 };

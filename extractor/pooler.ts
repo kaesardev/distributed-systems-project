@@ -42,4 +42,9 @@ export const CreateObservableYoYo = (historic: HistoricalResult) =>
         i--;
       }
     }, 1000);
-  }).pipe(map((d) => ({ ...d, date: new Date().toISOString() })));
+  }).pipe(
+    map((d) => ({
+      ...d,
+      date: new Date(Date.now()).toISOString(),
+    }))
+  );

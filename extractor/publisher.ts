@@ -1,7 +1,7 @@
 import amqp from "amqplib/callback_api";
 import { GetHistoricalData } from "./pooler";
 
-export const CreateRabbitMQPublisher = (symbol: string) => {
+export const CreateRabbitMQPublisher = (stockName: string) => {
   amqp.connect("amqp://localhost", (connectError, connection) => {
     if (connectError) {
       throw connectError;
@@ -12,13 +12,13 @@ export const CreateRabbitMQPublisher = (symbol: string) => {
         throw channelError;
       }
 
-      channel.assertExchange(symbol, "fanout", { durable: false });
+      channel.assertExchange(stockName, "fanout", { durable: false });
 
-      var stream = await GetHistoricalData("AAPL");
+      var stream = await GetHistoricalData(stockName);
       stream.subscribe((data) => {
         var msg = JSON.stringify(data);
-        channel.publish(symbol, "", Buffer.from(msg));
-        console.log("[RabbitMQ]: %s", msg);
+        channel.publish(stockName, "", Buffer.from(msg));
+        console.log(`[${stockName}]: %s`, msg);
       });
     });
   });

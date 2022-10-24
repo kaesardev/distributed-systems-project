@@ -1,21 +1,11 @@
-import { Server as WebSocketServer, AddressInfo, WebSocket } from "ws";
+import { Server as WebSocketServer, AddressInfo } from "ws";
 import { v4 as uuidv4 } from "uuid";
-
-interface Bet {
-  stock: string;
-  isWin: boolean;
-  value: number;
-  timestamp: number;
-}
-
-interface Client extends WebSocket {
-  uuid: string;
-  stock: string;
-  wallet: number;
-  history: Bet[];
-}
+import { Client } from "./interfaces/client";
+import { GetStockStream } from "./subscriber";
+import { Observable } from "rxjs";
 
 export const CreateWebSocketServer = () => {
+  const stocks: { [key: string]: Observable<any> } = {};
   const wss = new WebSocketServer({ port: 8080, path: "/finance" });
 
   wss.on("listening", () => {
@@ -36,15 +26,30 @@ export const CreateWebSocketServer = () => {
 
     wsc.on("message", function (message) {
       console.log("[Websocket]: %s", message);
+
       const { type, payload } = JSON.parse(message.toString());
       if (type === "SET_STOCK") {
-        wsc.stock = payload as string;
-      } else if (type === "SET_BET") {
-      }
+        let stock = payload as string;
+        wsc.stock = stock;
 
-      connections.forEach((c) => {
-        c.send(`${message}`);
-      });
+        if (!(stock in stocks)) {
+          stocks[stock] = GetStockStream(stock);
+        }
+
+        if (wsc.subscription) {
+          wsc.subscription.unsubscribe();
+        }
+        wsc.subscription = stocks[stock].subscribe((payload) => {
+          wsc.send(JSON.stringify({ type: "GET_STOCK", payload }));
+        });
+      } else if (type === "SET_BET") {
+        wsc.bet = {
+          isWin: false,
+          stock: wsc.stock,
+          timestamp: new Date(Date.now()).toISOString(),
+          value: 10.0,
+        };
+      }
     });
 
     wsc.send(

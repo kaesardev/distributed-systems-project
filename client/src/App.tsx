@@ -10,15 +10,17 @@ import {
   SelectChangeEvent,
   Typography,
 } from "@mui/material";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import useWebSocket, { ReadyState } from "react-use-websocket";
 import { ChartComponent } from "./Chart";
 import { STOCKS } from "./enums/Stocks";
 
 function App() {
+  const chartRef = useRef<any>();
   const socketUrl = "ws://localhost:8080/finance";
   const [history, setHistory] = useState<string[]>([]);
   const [wallet, setWallet] = useState<number>(0);
+  const [stock, setStock] = useState<string>("");
   const [currentMessage, setCurrentMessage] = useState("");
 
   const { sendMessage, lastMessage, readyState } = useWebSocket(socketUrl);
@@ -29,6 +31,17 @@ function App() {
       if (type === "GET_PROFILE") {
         setWallet(payload.wallet);
         setHistory(payload.history);
+      } else if (type === "GET_STOCK") {
+        let chart = chartRef!.current!.getChart();
+
+        chart.data.datasets.forEach((dataset: any) => {
+          if (dataset.label === "Dataset 1") {
+            dataset.data.push({
+              x: new Date(payload.date).getTime(),
+              y: payload.close,
+            });
+          }
+        });
       }
     }
   }, [lastMessage, setHistory, setWallet]);
@@ -45,6 +58,7 @@ function App() {
   const handleStockChange = (event: SelectChangeEvent<string>) => {
     const payload = event.target.value;
     sendMessage(JSON.stringify({ type: "SET_STOCK", payload }));
+    setStock(payload);
   };
 
   const handleButtonDown = useCallback<
@@ -93,6 +107,7 @@ function App() {
             labelId="stock-label"
             onChange={handleStockChange}
             autoWidth={false}
+            defaultValue={""}
             fullWidth
           >
             {STOCKS.map((stock) => {
@@ -111,7 +126,7 @@ function App() {
         </Typography>
       </Grid>
       <Grid item xs={12} style={{ height: 300 }}>
-        <ChartComponent />
+        <ChartComponent ref={chartRef} stock={stock} />
       </Grid>
       <Grid item xs={6}>
         <Button
